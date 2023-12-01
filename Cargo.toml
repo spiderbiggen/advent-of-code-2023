@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "year-2023/*"
+]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "warn"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
