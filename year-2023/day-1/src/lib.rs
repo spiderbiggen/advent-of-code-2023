@@ -16,15 +16,15 @@ mod part_1 {
                 }
                 first_n.unwrap() * 10 + last_n.unwrap()
             })
-            .fold(0, |acc, x| acc + x)
+            .sum()
     }
 
     #[test]
     fn test_process_example() {
-        let example = r#"1abc2
+        let example = r"1abc2
 pqr3stu8vwx
 a1b2c3d4e5f
-treb7uchet"#;
+treb7uchet";
         assert_eq!(solution(example), 142);
     }
 
@@ -36,10 +36,7 @@ treb7uchet"#;
 
 mod part_2 {
     fn solution(input: &str) -> usize {
-        input
-            .lines()
-            .map(|s| process_line(s))
-            .fold(0, |acc, x| acc + x)
+        input.lines().map(process_line).sum()
     }
 
     fn process_line(line: &str) -> usize {
@@ -53,11 +50,13 @@ mod part_2 {
                 let digit = (ascii[i] - b'0') as usize;
                 first_n.get_or_insert(digit);
                 last_n.replace(digit);
-                continue
+                continue;
             }
 
             for j in i..ascii.len() {
-                if ascii[j].is_ascii_digit() { break }
+                if ascii[j].is_ascii_digit() {
+                    break;
+                }
                 let num: usize = match &ascii[i..=j] {
                     s if s.starts_with(b"one") => 1,
                     s if s.starts_with(b"two") => 2,
@@ -68,11 +67,11 @@ mod part_2 {
                     s if s.starts_with(b"seven") => 7,
                     s if s.starts_with(b"eight") => 8,
                     s if s.starts_with(b"nine") => 9,
-                    _ => continue
+                    _ => continue,
                 };
                 first_n.get_or_insert(num);
                 last_n.replace(num);
-                break
+                break;
             }
         }
         first_n.unwrap() * 10 + last_n.unwrap()
@@ -80,13 +79,13 @@ mod part_2 {
 
     #[test]
     fn test_process_example() {
-        let example = r#"two1nine
+        let example = r"two1nine
 eightwothree
 abcone2threexyz
 xtwone3four
 4nineeightseven2
 zoneight234
-7pqrstsixteen"#;
+7pqrstsixteen";
         assert_eq!(solution(example), 281);
     }
 
