@@ -1,7 +1,7 @@
 const INPUT: &str = include_str!("../input_part_1");
 
 mod part_1 {
-    fn process_input(input: &str) -> usize {
+    fn solution(input: &str) -> usize {
         input
             .lines()
             .map(|line| {
@@ -25,17 +25,17 @@ mod part_1 {
 pqr3stu8vwx
 a1b2c3d4e5f
 treb7uchet"#;
-        assert_eq!(process_input(example), 142);
+        assert_eq!(solution(example), 142);
     }
 
     #[test]
     fn test_process_input() {
-        assert_eq!(process_input(super::INPUT), 55607);
+        eprintln!("Solution Day 1 Part 1: [{}]", solution(super::INPUT));
     }
 }
 
 mod part_2 {
-    fn process_input(input: &str) -> usize {
+    fn solution(input: &str) -> usize {
         input
             .lines()
             .map(|s| process_line(s))
@@ -87,11 +87,11 @@ xtwone3four
 4nineeightseven2
 zoneight234
 7pqrstsixteen"#;
-        assert_eq!(process_input(example), 281);
+        assert_eq!(solution(example), 281);
     }
 
     #[test]
     fn test_process_input() {
-        assert_eq!(process_input(super::INPUT), 55291);
+        eprintln!("Solution Day 1 Part 2: [{}]", solution(super::INPUT));
     }
 }

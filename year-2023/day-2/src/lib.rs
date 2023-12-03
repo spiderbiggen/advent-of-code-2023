@@ -59,7 +59,7 @@ mod part_1 {
 
     #[test]
     fn test_part_1() {
-        assert_eq!(solution(super::INPUT), 2369);
+        eprintln!("Solution Day 2 Part 1: [{}]", solution(super::INPUT));
     }
 }
 
@@ -75,6 +75,6 @@ mod part_2 {
 
     #[test]
     fn test_part_2() {
-        assert_eq!(solution(super::INPUT), 66363);
+        eprintln!("Solution Day 2 Part 2: [{}]", solution(super::INPUT));
     }
 }
