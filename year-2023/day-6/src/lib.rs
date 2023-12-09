@@ -22,7 +22,7 @@ mod part_1 {
     use crate::Race;
 
     fn solution(input: &str) -> u64 {
-        let races = dbg!(parse_input(input));
+        let races = parse_input(input);
         races.into_iter().map(Race::winning_inputs).product()
     }
 
