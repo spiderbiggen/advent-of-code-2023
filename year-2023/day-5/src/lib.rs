@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Range;
 
 const INPUT: &str = include_str!("../puzzle_input");
 const EXAMPLE_INPUT: &str = "seeds: 79 14 55 13
@@ -46,10 +47,21 @@ enum Category {
     HumidityToLocation,
 }
 
-impl Iterator for Category {
-    type Item = Category;
+impl Category {
+    fn from_str(value: &str) -> Self {
+        match value {
+            "seed-to-soil" => Category::SeedToSoil,
+            "soil-to-fertilizer" => Category::SoilToFertilizer,
+            "fertilizer-to-water" => Category::FertilizerToWater,
+            "water-to-light" => Category::WaterToLight,
+            "light-to-temperature" => Category::LightToTemperature,
+            "temperature-to-humidity" => Category::TemperatureToHumidity,
+            "humidity-to-location" => Category::HumidityToLocation,
+            _ => panic!("invalid category: {value}"),
+        }
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(self) -> Option<Self> {
         match self {
             Category::SeedToSoil => Some(Self::SoilToFertilizer),
             Category::SoilToFertilizer => Some(Self::FertilizerToWater),
@@ -58,21 +70,6 @@ impl Iterator for Category {
             Category::LightToTemperature => Some(Self::TemperatureToHumidity),
             Category::TemperatureToHumidity => Some(Self::HumidityToLocation),
             Category::HumidityToLocation => None,
-        }
-    }
-}
-
-impl Category {
-    fn from_str(s: &str) -> Self {
-        match s {
-            "seed-to-soil" => Category::SeedToSoil,
-            "soil-to-fertilizer" => Category::SoilToFertilizer,
-            "fertilizer-to-water" => Category::FertilizerToWater,
-            "water-to-light" => Category::WaterToLight,
-            "light-to-temperature" => Category::LightToTemperature,
-            "temperature-to-humidity" => Category::TemperatureToHumidity,
-            "humidity-to-location" => Category::HumidityToLocation,
-            _ => panic!("invalid category: {s}"),
         }
     }
 }
@@ -102,6 +99,42 @@ impl CategoryRanges {
                 }
             }
         }
+    }
+
+    fn resolve_numbers(&self, input: Range<u64>) -> Vec<Range<u64>> {
+        let mapping_iter = self.0.iter().filter(|&r| input.start < r.source + r.length);
+
+        let mut range = input.clone();
+        let mut output = vec![];
+        for mapping in mapping_iter {
+            // no matching mapping
+            if input.start < mapping.source {
+                let max = range.end.min(mapping.source);
+                output.push(range.start..max);
+                range = mapping.source..range.end;
+                if range.is_empty() {
+                    return output;
+                }
+            }
+
+            // partial mapping
+            if range.end < mapping.source + mapping.length {
+                let min = mapping.target + range.start - mapping.source;
+                let max = mapping.target + range.end - mapping.source;
+                output.push(min..max);
+                return output;
+            }
+
+            let max_number = range.end.min(mapping.source + mapping.length);
+            let max = mapping.target + max_number - mapping.source;
+            let min = mapping.target + range.start - mapping.source;
+            output.push(min..max);
+            range = max_number..range.end;
+        }
+        if !range.is_empty() {
+            output.push(range);
+        }
+        output
     }
 }
 
@@ -147,33 +180,32 @@ fn parse_range(input: &str) -> CategoryRange {
     }
 }
 
-fn resolve_location(steps: &HashMap<Category, CategoryRanges>, seed: u64) -> u64 {
-    let mut category = Category::SeedToSoil;
-    let mut number = seed;
-    // eprintln!("====");
-    loop {
-        let new_number = steps.get(&category).unwrap().resolve_number(number);
-        // eprintln!("{category:?} {number}: {new_number}");
-        number = new_number;
-
-        match category.next() {
-            Some(c) => category = c,
-            None => return number,
-        }
-    }
-}
-
 mod part_1 {
-    use crate::resolve_location;
+    use std::collections::HashMap;
+
+    use crate::{Category, CategoryRanges};
 
     fn solution(input: &str) -> u64 {
-        let (seeds, steps) = super::parse_input(input);
+        let (seeds, mappings) = super::parse_input(input);
         seeds
             .iter()
             .copied()
-            .map(|seeds| resolve_location(&steps, seeds))
+            .map(|seeds| resolve_location(&mappings, seeds))
             .min()
             .unwrap()
+    }
+
+    fn resolve_location(mappings: &HashMap<Category, CategoryRanges>, seed: u64) -> u64 {
+        let mut category = Category::SeedToSoil;
+        let mut number = seed;
+        loop {
+            number = mappings.get(&category).unwrap().resolve_number(number);
+
+            match category.next() {
+                Some(c) => category = c,
+                None => return number,
+            }
+        }
     }
 
     #[test]
@@ -189,25 +221,42 @@ mod part_1 {
 }
 
 mod part_2 {
-    use rayon::prelude::*;
+    use std::collections::HashMap;
+    use std::ops::Range;
 
-    use crate::resolve_location;
+    use crate::{Category, CategoryRanges};
 
     fn solution(input: &str) -> u64 {
-        let (seeds, steps) = super::parse_input(input);
-        let mut ranges = vec![];
+        let (seeds, mappings) = super::parse_input(input);
+        let mut ranges = Vec::with_capacity(seeds.len() / 2);
         for i in (0..seeds.len()).step_by(2) {
             let range_start = seeds[i];
             let range_end = range_start + seeds[i + 1];
             let seed_range = range_start..range_end;
             ranges.push(seed_range);
         }
-        ranges
-            .into_par_iter()
-            .flatten()
-            .map(|r| resolve_location(&steps, r))
-            .min()
-            .unwrap()
+        let location_ranges = resolve_location(&mappings, ranges);
+        location_ranges.into_iter().flatten().min().unwrap()
+    }
+
+    fn resolve_location(
+        mappings: &HashMap<Category, CategoryRanges>,
+        seeds: Vec<Range<u64>>,
+    ) -> Vec<Range<u64>> {
+        let mut category = Category::SeedToSoil;
+        let mut ranges = seeds;
+        loop {
+            let mapping = mappings.get(&category).unwrap();
+            ranges = ranges
+                .into_iter()
+                .flat_map(|range| mapping.resolve_numbers(range))
+                .collect();
+
+            match category.next() {
+                Some(c) => category = c,
+                None => return ranges,
+            }
+        }
     }
 
     #[test]
