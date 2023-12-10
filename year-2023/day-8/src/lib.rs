@@ -67,29 +67,29 @@ ZZZ = (ZZZ, ZZZ)";
 }
 
 mod part_2 {
-    use rayon::prelude::*;
-
     fn solution(input: &str) -> u64 {
         let (directions, map) = super::parse_input(input);
 
-        let directions = directions.chars().cycle().enumerate();
-        let mut starts = map
+        let directions = directions.chars().cycle();
+        let mut nodes = map
             .keys()
             .copied()
             .filter(|key| key.ends_with('A'))
             .collect::<Vec<_>>();
-        for (index, direction) in directions {
+        let mut step = 0u64;
+        for direction in directions {
+            step += 1;
             if direction == 'L' {
-                starts
-                    .par_iter_mut()
+                nodes
+                    .iter_mut()
                     .for_each(|key| *key = map.get(key).unwrap().0);
             } else {
-                starts
-                    .par_iter_mut()
+                nodes
+                    .iter_mut()
                     .for_each(|key| *key = map.get(key).unwrap().1);
             }
-            if starts.par_iter().all(|key| key.ends_with('Z')) {
-                return index as u64 + 1;
+            if nodes.iter().all(|key| key.ends_with('Z')) {
+                return step;
             }
         }
         unreachable!()
