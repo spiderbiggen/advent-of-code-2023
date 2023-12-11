@@ -15,24 +15,31 @@ fn parse_line(line: &str) -> (&str, (&str, &str)) {
     (key, directions.split_once(", ").unwrap())
 }
 
+fn find_min_steps(
+    directions: &str,
+    nodes: &BTreeMap<&str, (&str, &str)>,
+    start: &str,
+    finish_matcher: impl Fn(&str) -> bool,
+) -> u64 {
+    let mut node = start;
+    let directions = directions.chars().cycle().enumerate();
+    for (index, direction) in directions {
+        if direction == 'L' {
+            node = nodes.get(node).unwrap().0;
+        } else {
+            node = nodes.get(node).unwrap().1;
+        }
+        if finish_matcher(node) {
+            return index as u64 + 1;
+        }
+    }
+    unreachable!()
+}
+
 mod part_1 {
     fn solution(input: &str) -> u64 {
         let (directions, map) = super::parse_input(input);
-
-        let directions = directions.chars().cycle().enumerate();
-        let mut start = "AAA";
-        let end = "ZZZ";
-        for (index, direction) in directions {
-            if direction == 'L' {
-                start = map.get(start).unwrap().0;
-            } else {
-                start = map.get(start).unwrap().1;
-            }
-            if start == end {
-                return index as u64 + 1;
-            }
-        }
-        unreachable!()
+        super::find_min_steps(directions, &map, "AAA", |n| n == "ZZZ")
     }
 
     const EXAMPLE_INPUT: &str = "RL
@@ -67,32 +74,54 @@ ZZZ = (ZZZ, ZZZ)";
 }
 
 mod part_2 {
+    use std::cmp::min;
+    use std::mem::swap;
+    use std::ops::Div;
+
     fn solution(input: &str) -> u64 {
         let (directions, map) = super::parse_input(input);
 
-        let directions = directions.chars().cycle();
-        let mut nodes = map
-            .keys()
+        map.keys()
             .copied()
             .filter(|key| key.ends_with('A'))
-            .collect::<Vec<_>>();
-        let mut step = 0u64;
-        for direction in directions {
-            step += 1;
-            if direction == 'L' {
-                nodes
-                    .iter_mut()
-                    .for_each(|key| *key = map.get(key).unwrap().0);
-            } else {
-                nodes
-                    .iter_mut()
-                    .for_each(|key| *key = map.get(key).unwrap().1);
-            }
-            if nodes.iter().all(|key| key.ends_with('Z')) {
-                return step;
-            }
+            .map(|start| super::find_min_steps(directions, &map, start, |n| n.ends_with('Z')))
+            .fold(1u64, |acc, value| (acc * value).div(gcd(acc, value)))
+    }
+
+    fn gcd(mut n: u64, mut m: u64) -> u64 {
+        // Stein's binary GCD algorithm
+        // Base cases: gcd(n, 0) = gcd(0, n) = n
+        if n == 0 {
+            return m;
+        } else if m == 0 {
+            return n;
         }
-        unreachable!()
+
+        // Extract common factor-2: gcd(2ⁱ n, 2ⁱ m) = 2ⁱ gcd(n, m)
+        // and reducing until odd gcd(2ⁱ n, m) = gcd(n, m) if m is odd
+        let k = {
+            let k_n = n.trailing_zeros();
+            let k_m = m.trailing_zeros();
+            n >>= k_n;
+            m >>= k_m;
+            min(k_n, k_m)
+        };
+
+        loop {
+            // Invariant: n odd
+            debug_assert!(n % 2 == 1, "n = {} is even", n);
+
+            if n > m {
+                swap(&mut n, &mut m);
+            }
+            m -= n;
+
+            if m == 0 {
+                return n << k;
+            }
+
+            m >>= m.trailing_zeros();
+        }
     }
 
     const EXAMPLE_INPUT: &str = "LR
